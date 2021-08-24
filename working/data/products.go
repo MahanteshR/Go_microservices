@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/go-playground/validator"
 	"io"
-	"regexp"
 	"time"
 )
 
@@ -15,10 +14,10 @@ type Product struct {
 	Name        string  `json:"name" validate:"required"`
 	Description string  `json:"description"`
 	Price       float32 `json:"price" validate:"gte=0"`
-	SKU         string  `json:"sku" validate:"required, sku"`
-	CreatedOn   string  `json:"-"`
-	UpdatedOn   string  `json:"-"`
-	DeletedOn   string  `json:"-"`
+	//SKU         string  `json:"sku" validate:"required, sku"`
+	CreatedOn string `json:"-"`
+	UpdatedOn string `json:"-"`
+	DeletedOn string `json:"-"`
 }
 
 type Products []*Product
@@ -27,37 +26,29 @@ var ErrProductNotFound = fmt.Errorf("product not found")
 
 func (p *Product) Validate() error {
 	validate := validator.New()
-	validate.RegisterValidation("sku", validateSKU)
+	//validate.RegisterValidation("sku", validateSKU)
 	return validate.Struct(p)
 }
 
-func validateSKU(fl validator.FieldLevel) bool {
-	re := regexp.MustCompile(`[a-z]+-[a-z]+-[a-z]+`)
-	matches := re.FindAllString(fl.Field().String(), -1)
-
-	if len(matches) != 1 {
-		return false
-	}
-
-	return true
-}
-
-func (p *Product) FromJSON(r io.Reader) error {
-	e := json.NewDecoder(r)
-	return e.Decode(p)
-}
-
-// Products is a collection of Product
-
-// ToJSON serializes the contents of the collection to JSON
-// NewEncoder provides better performance than json.Unmarshal as it does not
-// have to buffer the output into an in memory slice of bytes
-// this reduces allocations and the overheads of the service
+//func validateSKU(fl validator.FieldLevel) bool {
+//	re := regexp.MustCompile(`[a-z]+-[a-z]+-[a-z]+`)
+//	matches := re.FindAllString(fl.Field().String(), -1)
 //
-// https://golang.org/pkg/encoding/json/#NewEncoder
-func (p *Products) ToJSON(w io.Writer) error {
+//	if len(matches) != 1 {
+//		return false
+//	}
+//
+//	return true
+//}
+
+func FromJSON(i interface{}, r io.Reader) error {
+	e := json.NewDecoder(r)
+	return e.Decode(i)
+}
+
+func ToJSON(i interface{}, w io.Writer) error {
 	e := json.NewEncoder(w)
-	return e.Encode(p)
+	return e.Encode(i)
 }
 
 // GetProducts returns a list of products
@@ -65,30 +56,35 @@ func GetProducts() Products {
 	return productList
 }
 
+func GetProductById(id int) (*Product, error) {
+	i := findIndexByProductId(id)
+	if id == -1 {
+		return nil, ErrProductNotFound
+	}
+	return productList[i], nil
+}
+
 func AddProduct(p *Product) {
 	p.ID = generateNextId()
 	productList = append(productList, p)
 }
 
-func UpdateProduct(id int, p *Product) error {
-	pos, _, err := findProduct(id)
-	if err != nil {
-		return err
+func UpdateProduct(p Product) error {
+	pos := findIndexByProductId(p.ID)
+	if pos == -1 {
+		return ErrProductNotFound
 	}
-
-	p.ID = id
-	productList[pos] = p
-
+	productList[pos] = &p
 	return nil
 }
 
-func findProduct(id int) (int, *Product, error) {
+func findIndexByProductId(id int) int {
 	for i, p := range productList {
 		if p.ID == id {
-			return i, p, nil
+			return i
 		}
 	}
-	return -1, nil, ErrProductNotFound
+	return -1
 }
 
 func generateNextId() int {
@@ -101,19 +97,19 @@ var productList = []*Product{
 	{
 		ID:          1,
 		Name:        "Latte",
-		Description: "Frothy milky coffee",
-		Price:       2.45,
-		SKU:         "abc323",
-		CreatedOn:   time.Now().UTC().String(),
-		UpdatedOn:   time.Now().UTC().String(),
+		Description: "Made with espresso and steamed milk.",
+		Price:       2.99,
+		//SKU:         "abc323",
+		CreatedOn: time.Now().UTC().String(),
+		UpdatedOn: time.Now().UTC().String(),
 	},
 	{
 		ID:          2,
-		Name:        "Espresso",
-		Description: "Short and strong coffee without milk",
+		Name:        "Mocaccino",
+		Description: "A chocolate-flavoured warm beverage that is a variant of a caffè latte",
 		Price:       1.99,
-		SKU:         "fjd34",
-		CreatedOn:   time.Now().UTC().String(),
-		UpdatedOn:   time.Now().UTC().String(),
+		//SKU:         "fjd34",
+		CreatedOn: time.Now().UTC().String(),
+		UpdatedOn: time.Now().UTC().String(),
 	},
 }

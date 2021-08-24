@@ -18,6 +18,15 @@ func NewProducts(l *log.Logger) *Products {
 	return &Products{l}
 }
 
+func getProductId(r *http.Request) int {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 //func (p *Products) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 //	if r.Method == http.MethodGet {
 //		p.getProducts(rw, r)
@@ -57,23 +66,15 @@ func NewProducts(l *log.Logger) *Products {
 //	rw.WriteHeader(http.StatusMethodNotAllowed)
 //}
 
-func (p *Products) GetProducts(rw http.ResponseWriter, r *http.Request) {
-	lp := data.GetProducts()
-	err := lp.ToJSON(rw)
-	if err != nil {
-		http.Error(rw, "unable to convert it to json", http.StatusInternalServerError)
-	}
-}
-
-func (p *Products) AddProducts(rw http.ResponseWriter, r *http.Request) {
-	p.l.Println("Handle POST Product")
-	prod := r.Context().Value(KeyProduct{}).(data.Product)
-	data.AddProduct(&prod)
-}
+//func (p *Products) AddProducts(rw http.ResponseWriter, r *http.Request) {
+//	p.l.Println("Handle POST Product")
+//	prod := r.Context().Value(KeyProduct{}).(data.Product)
+//	data.AddProduct(&prod)
+//}
 
 func (p Products) UpdateProducts(rw http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+	_, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(rw, "Unable to convert ID", http.StatusBadRequest)
 		return
@@ -82,7 +83,7 @@ func (p Products) UpdateProducts(rw http.ResponseWriter, r *http.Request) {
 	p.l.Println("Update product handler")
 
 	prod := r.Context().Value(KeyProduct{}).(data.Product)
-	err = data.UpdateProduct(id, &prod)
+	err = data.UpdateProduct(prod)
 	if err == data.ErrProductNotFound {
 		http.Error(rw, "Product not found", http.StatusNotFound)
 		return
@@ -100,7 +101,7 @@ func (p Products) MiddlewareProductValidation(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		prod := data.Product{}
 
-		err := prod.FromJSON(r.Body)
+		err := data.FromJSON(prod, r.Body)
 		if err != nil {
 			http.Error(rw, "error reading product", http.StatusBadRequest)
 			return
@@ -117,4 +118,8 @@ func (p Products) MiddlewareProductValidation(next http.Handler) http.Handler {
 
 		next.ServeHTTP(rw, req)
 	})
+}
+
+type GenericError struct {
+	Message string `json:"message"`
 }
