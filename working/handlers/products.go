@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	protos "gRPC/currency/protos/currency"
 	"github.com/gorilla/mux"
 	"log"
 	"microservices/working/data"
@@ -11,11 +12,12 @@ import (
 )
 
 type Products struct {
-	l *log.Logger
+	l  *log.Logger
+	cc protos.CurrencyClient
 }
 
-func NewProducts(l *log.Logger) *Products {
-	return &Products{l}
+func NewProducts(l *log.Logger, cc protos.CurrencyClient) *Products {
+	return &Products{l, cc}
 }
 
 func getProductId(r *http.Request) int {
